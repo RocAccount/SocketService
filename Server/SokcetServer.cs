@@ -6,7 +6,8 @@ using System.Threading;
 using System.Collections.Generic;
 namespace TestService
 {
-        public class SocketServer
+
+    public class SocketServer
     {
         public int ClientCount { get { return clients.Count; } }
         public bool Started { get; private set; }
@@ -18,7 +19,7 @@ namespace TestService
         private Socket innerSocket;
         private List<SocketConnection> clients;
         private Dictionary<object, SocketConnection> clientMap;
-        private Timer tmrPing;
+
         private object clientListLock = new object(), eventQueueLock = new object();
         private bool buzy = false;
 
@@ -57,11 +58,6 @@ namespace TestService
             }
             innerSocket = null;
             Started = false;
-            if (this.tmrPing != null)
-            {
-                this.tmrPing.Dispose();
-                this.tmrPing = null;
-            }
         }
 
         public SocketConnection GetClientByIndex(int index)
@@ -82,19 +78,6 @@ namespace TestService
                 this.clientMap.TryGetValue(userdata, out result);
                 return result;
             }
-        }
-
-        public SocketConnection GetClientCustom(Func<SocketConnection, bool> func)
-        {
-            if (func == null) { return null; }
-            lock (clientListLock)
-            {
-                foreach (SocketConnection sc in this.clients)
-                {
-                    if (func(sc)) { return sc; }
-                }
-            }
-            return null;
         }
 
         public bool SendToClient(SocketConnection client, byte[] data, int startIndex, int length)
@@ -206,33 +189,12 @@ namespace TestService
             }
         }
 
-        private void pingTimerCallBack(object state)
-        {
-            if (!Started || buzy || DisablePing) { return; }
-            lock (clientListLock)
-            {
-                foreach (SocketConnection sc in clients)
-                {
-                    if ((DateTime.Now - sc.LastReceiveTime).TotalSeconds > 15.0)
-                    {
-                        sc.Connection.Close();
-                    }
-                    else
-                    {
-                        try
-                        {
-                            //sc.SendPing();
-                        }
-                        catch (Exception) { }
-                    }
-                }
-            }
-        }
+
         public SocketServer()
         {
             clients = new List<SocketConnection>();
             clientMap = new Dictionary<object, SocketConnection>();
-            tmrPing = new Timer(this.pingTimerCallBack, null, 5000, 5000);
         }
+
     }
 }
